@@ -1,3 +1,6 @@
+import routes from './routes/routes';
+import * as dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { AppDataSource } from './config/data-source';
@@ -8,6 +11,7 @@ const PORT = 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/', routes);
 
 //start db and server
 AppDataSource.initialize()
