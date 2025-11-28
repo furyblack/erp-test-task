@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/data-source';
 import { File } from '../entity/File';
 import fs from 'fs';
@@ -7,7 +7,7 @@ import path from 'path';
 const fileRepository = AppDataSource.getRepository(File);
 
 export class FileController {
-    static async uploadFile(req: Request, res: Response) {
+    static async uploadFile(req: Request, res: Response, next: NextFunction) {
         try {
             if (!req.file) {
                 return res.status(400).json({ message: 'No file uploaded' });
@@ -17,7 +17,7 @@ export class FileController {
             const extension = path.extname(originalname);
 
             const newFile = new File();
-            newFile.name = filename; //имя на диске
+            newFile.name = filename;
             newFile.extension = extension;
             newFile.mimeType = mimetype;
             newFile.size = size;
@@ -28,12 +28,11 @@ export class FileController {
                 .status(201)
                 .json({ message: 'File uploaded', file: newFile });
         } catch (e) {
-            console.error(e);
-            return res.status(500).json({ message: 'Upload error' });
+            return next(e);
         }
     }
 
-    static async listFiles(req: Request, res: Response) {
+    static async listFiles(req: Request, res: Response, next: NextFunction) {
         try {
             const list_size = req.query.list_size
                 ? Number(req.query.list_size)
@@ -53,11 +52,11 @@ export class FileController {
                 files,
             });
         } catch (e) {
-            return res.status(500).json({ message: 'List error' });
+            return next(e);
         }
     }
 
-    static async getFileInfo(req: Request, res: Response) {
+    static async getFileInfo(req: Request, res: Response, next: NextFunction) {
         try {
             const id = Number(req.params.id);
             const file = await fileRepository.findOne({ where: { id } });
@@ -68,11 +67,11 @@ export class FileController {
 
             return res.json(file);
         } catch (e) {
-            return res.status(500).json({ message: 'Error getting file info' });
+            return next(e);
         }
     }
 
-    static async downloadFile(req: Request, res: Response) {
+    static async downloadFile(req: Request, res: Response, next: NextFunction) {
         try {
             const id = Number(req.params.id);
             const file = await fileRepository.findOne({ where: { id } });
@@ -91,11 +90,11 @@ export class FileController {
                     .json({ message: 'File missing on server' });
             }
         } catch (e) {
-            return res.status(500).json({ message: 'Download error' });
+            return next(e);
         }
     }
 
-    static async deleteFile(req: Request, res: Response) {
+    static async deleteFile(req: Request, res: Response, next: NextFunction) {
         try {
             const id = Number(req.params.id);
             const file = await fileRepository.findOne({ where: { id } });
@@ -104,22 +103,20 @@ export class FileController {
                 return res.status(404).json({ message: 'File not found' });
             }
 
-            //удаляем с диска
             const filePath = path.join(__dirname, '../../uploads', file.name);
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
             }
 
-            //удаляем из базы
             await fileRepository.delete(id);
 
             return res.json({ message: 'File deleted' });
         } catch (e) {
-            return res.status(500).json({ message: 'Delete error' });
+            return next(e);
         }
     }
 
-    static async updateFile(req: Request, res: Response) {
+    static async updateFile(req: Request, res: Response, next: NextFunction) {
         try {
             const id = Number(req.params.id);
 
@@ -135,13 +132,11 @@ export class FileController {
                 return res.status(404).json({ message: 'File not found' });
             }
 
-            //удаляем старый  файл с диска
             const oldPath = path.join(__dirname, '../../uploads', oldFile.name);
             if (fs.existsSync(oldPath)) {
                 fs.unlinkSync(oldPath);
             }
 
-            //обновляем данные в базе на новый файл
             const { filename, originalname, mimetype, size } = req.file;
             const extension = path.extname(originalname);
 
@@ -155,7 +150,7 @@ export class FileController {
 
             return res.json({ message: 'File updated', file: oldFile });
         } catch (e) {
-            return res.status(500).json({ message: 'Update error' });
+            return next(e);
         }
     }
 }

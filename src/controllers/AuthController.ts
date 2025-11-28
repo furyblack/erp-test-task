@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/data-source';
 import { User } from '../entity/User';
 import { Token } from '../entity/Token';
@@ -30,7 +30,7 @@ const generateTokens = (userId: number) => {
 };
 
 export class AuthController {
-    static async signup(req: Request, res: Response) {
+    static async signup(req: Request, res: Response, next: NextFunction) {
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
@@ -66,12 +66,11 @@ export class AuthController {
 
             return res.json({ ...tokens });
         } catch (e) {
-            console.error(e);
-            return res.status(500).json({ message: 'Registration error' });
+            return next(e);
         }
     }
 
-    static async signin(req: Request, res: Response) {
+    static async signin(req: Request, res: Response, next: NextFunction) {
         try {
             const { id, password } = req.body;
 
@@ -95,12 +94,11 @@ export class AuthController {
 
             return res.json({ ...tokens });
         } catch (e) {
-            console.error(e);
-            return res.status(500).json({ message: 'Login error' });
+            return next(e);
         }
     }
 
-    static async refreshToken(req: Request, res: Response) {
+    static async refreshToken(req: Request, res: Response, next: NextFunction) {
         try {
             const { refreshToken } = req.body;
 
@@ -138,14 +136,17 @@ export class AuthController {
         }
     }
 
-    static async info(req: Request, res: Response) {
-        //user добавляется в req благодаря authMiddleware
-        //@ts-ignore
-        const userId = req.user.id;
-        return res.json({ id: userId });
+    static async info(req: Request, res: Response, next: NextFunction) {
+        try {
+            // @ts-ignore
+            const userId = req.user.id;
+            return res.json({ id: userId });
+        } catch (e) {
+            return next(e);
+        }
     }
 
-    static async logout(req: Request, res: Response) {
+    static async logout(req: Request, res: Response, next: NextFunction) {
         try {
             const refreshToken = req.query.refreshToken as string;
 
@@ -165,7 +166,7 @@ export class AuthController {
 
             return res.json({ message: 'Logout success' });
         } catch (e) {
-            return res.status(500).json({ message: 'Logout error' });
+            return next(e);
         }
     }
 }
